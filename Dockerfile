@@ -64,12 +64,7 @@ RUN \
     && wget -q -O - https://github.com/Yelp/dumb-init/releases/download/v${DI_VERSION}/dumb-init_${DI_VERSION}_amd64 > /sbin/dumb-init \
     && echo "$DI_SHA  /sbin/dumb-init" | sha256sum -c - \
     && adduser --disabled-password --no-create-home --gecos '' --disabled-login cassandra \
-    && mkdir -p /var/lib/cassandra/ /var/log/cassandra/ /etc/cassandra/triggers
-
-COPY files /
-
-RUN \
-    set -ex \
+    && mkdir -p /var/lib/cassandra/ /var/log/cassandra/ /etc/cassandra/triggers \
     && chmod +x /sbin/dumb-init /ready-probe.sh \
     && mv /logback-stdout.xml /logback-files.xml /cassandra.yaml /jvm.options /prometheus.yaml /etc/cassandra/ \
     && mv /usr/local/apache-cassandra-${CASSANDRA_VERSION}/conf/cassandra-env.sh /etc/cassandra/ \
