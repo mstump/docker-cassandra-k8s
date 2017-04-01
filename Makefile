@@ -19,15 +19,20 @@ CASSANDRA_VERSION?=3.10
 
 all: build
 
-docker: 
+docker:
 	docker build --pull --build-arg "CASSANDRA_VERSION=${CASSANDRA_VERSION}" -t ${PROJECT}/cassandra:${VERSION} .
 
-docker-dev: 
+docker-dev:
 	docker build --pull --build-arg "CASSANDRA_VERSION=${CASSANDRA_VERSION} DEV_CONTAINER=1" -t ${PROJECT}/cassandra:${VERSION}-dev .
+
+docker-cached:
+	docker build --build-arg "CASSANDRA_VERSION=${CASSANDRA_VERSION}" -t ${PROJECT}/cassandra:${VERSION} .
 
 build: docker
 
 build-dev: docker-dev
+
+build-cached: docker-cached
 
 push: build
 	docker push ${PROJECT}/cassandra:${VERSION}

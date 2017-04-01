@@ -52,33 +52,31 @@ RUN \
 	libjemalloc1 \
 	localepurge \
 	wget \
+    jq \
     && wget -q -O - "http://search.maven.org/remotecontent?filepath=io/prometheus/jmx/jmx_prometheus_javaagent/${PROMETHEUS_VERSION}/jmx_prometheus_javaagent-${PROMETHEUS_VERSION}.jar" > /usr/local/share/prometheus-agent.jar \
     && echo "$PROMETHEUS_SHA  /usr/local/share/prometheus-agent.jar" | sha256sum -c - \
     && wget -q -O - "http://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-jvm/${JOLOKIA_VERSION}/jolokia-jvm-${JOLOKIA_VERSION}-agent.jar" > /usr/local/share/jolokia-agent.jar \
     && echo "$JOLOKIA_SHA  /usr/local/share/jolokia-agent.jar" | sha256sum -c - \
-    && mirror_url=$( wget -q -O - http://www.apache.org/dyn/closer.cgi/cassandra \
-        | sed -n 's#.*href="\(http://ftp.[^"]*\)".*#\1#p' \
-        | head -n 1 \
-      ) \
-    && wget -q -O - ${mirror_url}/${CASSANDRA_VERSION}/apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz \
+    && mirror_url=$( wget -q -O - 'https://www.apache.org/dyn/closer.cgi?as_json=1' | jq --raw-output '.preferred' ) \
+    && wget -q -O - ${mirror_url}/cassandra/${CASSANDRA_VERSION}/apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz \
         | tar -xzf - -C /usr/local \
     && ln -s $CASSANDRA_HOME /usr/local/apache-cassandra \
     && wget -q -O - https://github.com/Yelp/dumb-init/releases/download/v${DI_VERSION}/dumb-init_${DI_VERSION}_amd64 > /sbin/dumb-init \
     && echo "$DI_SHA  /sbin/dumb-init" | sha256sum -c - \
     && adduser --disabled-password --no-create-home --gecos '' --disabled-login cassandra \
-    && mkdir -p /var/lib/cassandra/ /etc/cassandra/triggers
+    && mkdir -p /var/lib/cassandra/ /var/log/cassandra/ /etc/cassandra/triggers
 
 COPY files /
 
 RUN \
     set -ex \
     && chmod +x /sbin/dumb-init /ready-probe.sh \
-    && mv /logback.xml /cassandra.yaml /jvm.options /prometheus.yaml /etc/cassandra/ \
+    && mv /logback-stdout.xml /logback-files.xml /cassandra.yaml /jvm.options /prometheus.yaml /etc/cassandra/ \
     && mv /usr/local/apache-cassandra-${CASSANDRA_VERSION}/conf/cassandra-env.sh /etc/cassandra/ \
     && chown cassandra: /ready-probe.sh \
     && if [ -n "$DEV_CONTAINER" ]; then apt-get -y --no-install-recommends install python; else rm -rf  $CASSANDRA_HOME/pylib; fi \
-    && apt-get -y purge wget localepurge \
-    && apt-get autoremove \
+    && apt-get -y purge wget jq localepurge \
+    && apt-get -y autoremove \
     && apt-get clean \
     && rm -rf \
         $CASSANDRA_HOME/*.txt \
@@ -94,7 +92,7 @@ RUN \
 	common-licenses \
 	~/.bashrc \
         /var/lib/apt/lists/* \
-        /var/log/* \
+        /var/log/**/* \
         /var/cache/debconf/* \
         /etc/systemd \
         /lib/lsb \
