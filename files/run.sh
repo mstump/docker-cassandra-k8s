@@ -36,6 +36,7 @@ CASSANDRA_DC="${CASSANDRA_DC}"
 CASSANDRA_DISK_OPTIMIZATION_STRATEGY="${CASSANDRA_DISK_OPTIMIZATION_STRATEGY:-ssd}"
 CASSANDRA_ENDPOINT_SNITCH="${CASSANDRA_ENDPOINT_SNITCH:-SimpleSnitch}"
 CASSANDRA_LISTEN_ADDRESS=${POD_IP:-$HOSTNAME}
+CASSANDRA_LOG_JSON="${CASSANDRA_LOG_JSON:-false}"
 CASSANDRA_LOG_TO_FILES="${CASSANDRA_LOG_TO_FILES:-false}"
 CASSANDRA_LOG_PATH="${CASSANDRA_LOG_PATH:-/var/log/cassandra}"
 CASSANDRA_LOG_GC="${CASSANDRA_LOG_GC:-false}"
@@ -71,6 +72,7 @@ echo CASSANDRA_INTERNODE_COMPRESSION ${CASSANDRA_INTERNODE_COMPRESSION}
 echo CASSANDRA_KEY_CACHE_SIZE_IN_MB ${CASSANDRA_KEY_CACHE_SIZE_IN_MB}
 echo CASSANDRA_LISTEN_ADDRESS ${CASSANDRA_LISTEN_ADDRESS}
 echo CASSANDRA_LISTEN_INTERFACE ${CASSANDRA_LISTEN_INTERFACE}
+echo CASSANDRA_LOG_JSON ${CASSANDRA_LOG_JSON}
 echo CASSANDRA_LOG_GC ${CASSANDRA_LOG_GC}
 echo CASSANDRA_LOG_GC_VERBOSE ${CASSANDRA_LOG_GC_VERBOSE}
 echo CASSANDRA_LOG_PATH ${CASSANDRA_LOG_PATH}
@@ -181,12 +183,20 @@ fi
 
 # configure logging
 sed -ri 's/.*cassandra_parms=.*-Dlogback.configurationFile.*//' $CASSANDRA_BIN
+sed -ri 's/.*cassandra_parms=.*-Dcassandra.logdir.*//' $CASSANDRA_BIN
+echo "-Dcassandra.logdir=${CASSANDRA_LOG_PATH}" >> $CASSANDRA_CONF_DIR/jvm.options
 if [[ $CASSANDRA_LOG_TO_FILES == 'true' ]]; then
-  sed -ri 's/.*cassandra_parms=.*-Dcassandra.logdir.*//' $CASSANDRA_BIN
-  echo "-Dcassandra.logdir=${CASSANDRA_LOG_PATH}" >> $CASSANDRA_CONF_DIR/jvm.options
-  echo "-Dlogback.configurationFile=${CASSANDRA_CONF_DIR}/logback-files.xml" >> $CASSANDRA_CONF_DIR/jvm.options
+  if [[ $CASSANDRA_LOG_JSON == 'true' ]]; then
+    echo "-Dlogback.configurationFile=${CASSANDRA_CONF_DIR}/logback-json-files.xml" >> $CASSANDRA_CONF_DIR/jvm.options
+  else
+    echo "-Dlogback.configurationFile=${CASSANDRA_CONF_DIR}/logback-files.xml" >> $CASSANDRA_CONF_DIR/jvm.options
+  fi
 else
-  echo "-Dlogback.configurationFile=${CASSANDRA_CONF_DIR}/logback-stdout.xml" >> $CASSANDRA_CONF_DIR/jvm.options
+  if [[ $CASSANDRA_LOG_JSON == 'true' ]]; then
+    echo "-Dlogback.configurationFile=${CASSANDRA_CONF_DIR}/logback-json-stdout.xml" >> $CASSANDRA_CONF_DIR/jvm.options
+  else
+    echo "-Dlogback.configurationFile=${CASSANDRA_CONF_DIR}/logback-stdout.xml" >> $CASSANDRA_CONF_DIR/jvm.options
+  fi
 fi
 
 # getting WARNING messages with Migration Service

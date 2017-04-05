@@ -40,7 +40,9 @@ ENV \
     JOLOKIA_VERSION=1.3.5 \
     JOLOKIA_SHA=90907e9d1aa8799252c08cd5ec67d805b2661ad6e773d0de9c8e3d1620b72369 \
     PROMETHEUS_VERSION=0.8 \
-    PROMETHEUS_SHA=c32440e4a98b441b4ab66a788df77494d32e1560e0f3bb5342752bf064408520
+    PROMETHEUS_SHA=c32440e4a98b441b4ab66a788df77494d32e1560e0f3bb5342752bf064408520 \
+    LOGENCODER_VERSION=4.10-SNAPSHOT \
+    LOGENCODER_SHA=89be27bea7adc05b68c052a27b08c594a9f8e354185acbfd7a7b5f04c7cd9e20
 
 COPY files /
 
@@ -50,25 +52,27 @@ RUN \
     && export CASSANDRA_VERSION=${CASSANDRA_VERSION:-$CASSANDRA_RELEASE} \
     && export CASSANDRA_HOME=/usr/local/apache-cassandra-${CASSANDRA_VERSION} \
     && apt-get update && apt-get -qq -y --force-yes install --no-install-recommends \
-	openjdk-8-jre-headless \
-	libjemalloc1 \
-	localepurge \
-	wget \
+    openjdk-8-jre-headless \
+    libjemalloc1 \
+    localepurge \
+    wget \
     jq \
     && wget -q -O - "http://search.maven.org/remotecontent?filepath=io/prometheus/jmx/jmx_prometheus_javaagent/${PROMETHEUS_VERSION}/jmx_prometheus_javaagent-${PROMETHEUS_VERSION}.jar" > /usr/local/share/prometheus-agent.jar \
-    && echo "$PROMETHEUS_SHA  /usr/local/share/prometheus-agent.jar" | sha256sum -c - \
+    && echo "$PROMETHEUS_SHA /usr/local/share/prometheus-agent.jar" | sha256sum -c - \
     && wget -q -O - "http://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-jvm/${JOLOKIA_VERSION}/jolokia-jvm-${JOLOKIA_VERSION}-agent.jar" > /usr/local/share/jolokia-agent.jar \
     && echo "$JOLOKIA_SHA  /usr/local/share/jolokia-agent.jar" | sha256sum -c - \
     && mirror_url=$( wget -q -O - 'https://www.apache.org/dyn/closer.cgi?as_json=1' | jq --raw-output '.preferred' ) \
     && wget -q -O - ${mirror_url}/cassandra/${CASSANDRA_VERSION}/apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz \
         | tar -xzf - -C /usr/local \
     && ln -s $CASSANDRA_HOME /usr/local/apache-cassandra \
+    && wget -q -O - "https://github.com/mstump/logstash-logback-encoder/releases/download/${LOGENCODER_VERSION}/logstash-logback-encoder-${LOGENCODER_VERSION}.jar" > /usr/local/apache-cassandra/lib/log-encoder.jar \
+    && echo "$LOGENCODER_SHA /usr/local/apache-cassandra/lib/log-encoder.jar" | sha256sum -c - \
     && wget -q -O - https://github.com/Yelp/dumb-init/releases/download/v${DI_VERSION}/dumb-init_${DI_VERSION}_amd64 > /sbin/dumb-init \
     && echo "$DI_SHA  /sbin/dumb-init" | sha256sum -c - \
     && adduser --disabled-password --no-create-home --gecos '' --disabled-login cassandra \
     && mkdir -p /var/lib/cassandra/ /var/log/cassandra/ /etc/cassandra/triggers \
     && chmod +x /sbin/dumb-init /ready-probe.sh \
-    && mv /logback-stdout.xml /logback-files.xml /cassandra.yaml /jvm.options /prometheus.yaml /etc/cassandra/ \
+    && mv /logback-stdout.xml /logback-json-files.xml /logback-json-stdout.xml /logback-files.xml /cassandra.yaml /jvm.options /prometheus.yaml /etc/cassandra/ \
     && mv /usr/local/apache-cassandra-${CASSANDRA_VERSION}/conf/cassandra-env.sh /etc/cassandra/ \
     && chown cassandra: /ready-probe.sh \
     && if [ -n "$DEV_CONTAINER" ]; then apt-get -y --no-install-recommends install python; else rm -rf  $CASSANDRA_HOME/pylib; fi \
@@ -127,9 +131,9 @@ RUN \
         /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/plugin.jar \
         /usr/lib/jvm/java-8-openjdk-amd64/jre/man \
         /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/images \
-	/usr/lib/jvm/java-8-openjdk-amd64/man \
-	/usr/lib/jvm/java-8-openjdk-amd64/jre/THIRD_PARTY_README \
-	/usr/lib/jvm/java-8-openjdk-amd64/jre/ASSEMBLY_EXCEPTION
+        /usr/lib/jvm/java-8-openjdk-amd64/man \
+        /usr/lib/jvm/java-8-openjdk-amd64/jre/THIRD_PARTY_README \
+        /usr/lib/jvm/java-8-openjdk-amd64/jre/ASSEMBLY_EXCEPTION
 
 VOLUME ["/var/lib/cassandra"]
 
