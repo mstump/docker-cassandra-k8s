@@ -30,10 +30,11 @@ LABEL \
     org.label-schema.vcs-url="https://github.com/k8s-for-greeks/docker-cassandra-k8s"
 
 ENV \
+    CASSANDRA_HOME=/usr/local/apache-cassandra \
     CASSANDRA_CONF=/etc/cassandra \
     CASSANDRA_DATA=/var/lib/cassandra \
     CASSANDRA_LOGS=/var/log/cassandra \
-    CASSANDRA_RELEASE=3.10 \
+    CASSANDRA_RELEASE=2.1.17 \
     JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 \
     DI_VERSION=1.2.0 \
     DI_SHA=81231da1cd074fdc81af62789fead8641ef3f24b6b07366a1c34e5b059faf363 \
@@ -44,13 +45,11 @@ ENV \
     LOGENCODER_VERSION=4.10-SNAPSHOT \
     LOGENCODER_SHA=89be27bea7adc05b68c052a27b08c594a9f8e354185acbfd7a7b5f04c7cd9e20
 
-COPY files /
-
 RUN \
     set -ex \
-    && echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections \
     && export CASSANDRA_VERSION=${CASSANDRA_VERSION:-$CASSANDRA_RELEASE} \
-    && export CASSANDRA_HOME=/usr/local/apache-cassandra-${CASSANDRA_VERSION} \
+    && export CASSANDRA_INSTALL=/usr/local/apache-cassandra-${CASSANDRA_VERSION} \
+    && echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections \
     && apt-get update && apt-get -qq -y --force-yes install --no-install-recommends \
     openjdk-8-jre-headless \
     libjemalloc1 \
@@ -64,16 +63,23 @@ RUN \
     && mirror_url=$( wget -q -O - 'https://www.apache.org/dyn/closer.cgi?as_json=1' | jq --raw-output '.preferred' ) \
     && wget -q -O - ${mirror_url}/cassandra/${CASSANDRA_VERSION}/apache-cassandra-${CASSANDRA_VERSION}-bin.tar.gz \
         | tar -xzf - -C /usr/local \
-    && ln -s $CASSANDRA_HOME /usr/local/apache-cassandra \
+    && ln -s $CASSANDRA_INSTALL /usr/local/apache-cassandra \
     && wget -q -O - "https://github.com/mstump/logstash-logback-encoder/releases/download/${LOGENCODER_VERSION}/logstash-logback-encoder-${LOGENCODER_VERSION}.jar" > /usr/local/apache-cassandra/lib/log-encoder.jar \
     && echo "$LOGENCODER_SHA /usr/local/apache-cassandra/lib/log-encoder.jar" | sha256sum -c - \
     && wget -q -O - https://github.com/Yelp/dumb-init/releases/download/v${DI_VERSION}/dumb-init_${DI_VERSION}_amd64 > /sbin/dumb-init \
     && echo "$DI_SHA  /sbin/dumb-init" | sha256sum -c - \
-    && adduser --disabled-password --no-create-home --gecos '' --disabled-login cassandra \
+    && adduser --disabled-password --no-create-home --gecos '' --disabled-login cassandra
+
+COPY files /
+
+RUN \
+    set -ex \
+    && export CASSANDRA_VERSION=${CASSANDRA_VERSION:-$CASSANDRA_RELEASE} \
+    && export CASSANDRA_INSTALL=/usr/local/apache-cassandra-${CASSANDRA_VERSION} \
     && mkdir -p /var/lib/cassandra/ /var/log/cassandra/ /etc/cassandra/triggers \
     && chmod +x /sbin/dumb-init /ready-probe.sh \
     && mv /logback-stdout.xml /logback-json-files.xml /logback-json-stdout.xml /logback-files.xml /cassandra.yaml /jvm.options /prometheus.yaml /etc/cassandra/ \
-    && mv /usr/local/apache-cassandra-${CASSANDRA_VERSION}/conf/cassandra-env.sh /etc/cassandra/ \
+    && mv /cassandra-env.sh /etc/cassandra/ \
     && chown cassandra: /ready-probe.sh \
     && if [ -n "$DEV_CONTAINER" ]; then apt-get -y --no-install-recommends install python; else rm -rf  $CASSANDRA_HOME/pylib; fi \
     && apt-get -y purge wget jq localepurge \

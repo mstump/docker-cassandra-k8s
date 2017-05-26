@@ -14,33 +14,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -x
 CASSANDRA_BIN=/usr/local/apache-cassandra/bin/cassandra
 CASSANDRA_CONF_DIR=/etc/cassandra
 CASSANDRA_CFG=$CASSANDRA_CONF_DIR/cassandra.yaml
 CASSANDRA_CONF_DIR=/etc/cassandra
 
+if [ -z "$POD_IP" ]; then
+  POD_IP=$(hostname -I| awk '{print $1}')
+fi
+
+hostname -i
+if [ $? -ne 0 ]
+then
+  # fix for host networking
+  echo "$POD_IP $HOSTNAME" >> /etc/hosts
+fi
+
 # we are doing StatefulSet or just setting our seeds
 if [ -z "$CASSANDRA_SEEDS" ]; then
-  HOSTNAME=$(hostname -f)
-  CASSANDRA_SEEDS=$(hostname -f)
+  CASSANDRA_SEEDS=$POD_IP
 fi
 
 # The following vars relate to there counter parts in $CASSANDRA_CFG
 # for instance rpc_address
 CASSANDRA_AUTO_BOOTSTRAP="${CASSANDRA_AUTO_BOOTSTRAP:-true}"
-CASSANDRA_BROADCAST_ADDRESS=${POD_IP:-$HOSTNAME}
-CASSANDRA_BROADCAST_RPC_ADDRESS=${POD_IP:-$HOSTNAME}
+CASSANDRA_BROADCAST_ADDRESS=${POD_IP}
+CASSANDRA_BROADCAST_RPC_ADDRESS=${POD_IP}
 CASSANDRA_CLUSTER_NAME="${CASSANDRA_CLUSTER_NAME:='Test Cluster'}"
 CASSANDRA_DC="${CASSANDRA_DC}"
 CASSANDRA_DISK_OPTIMIZATION_STRATEGY="${CASSANDRA_DISK_OPTIMIZATION_STRATEGY:-ssd}"
 CASSANDRA_ENDPOINT_SNITCH="${CASSANDRA_ENDPOINT_SNITCH:-SimpleSnitch}"
-CASSANDRA_LISTEN_ADDRESS=${POD_IP:-$HOSTNAME}
-CASSANDRA_LOG_JSON="${CASSANDRA_LOG_JSON:-false}"
-CASSANDRA_LOG_TO_FILES="${CASSANDRA_LOG_TO_FILES:-false}"
-CASSANDRA_LOG_PATH="${CASSANDRA_LOG_PATH:-/var/log/cassandra}"
+CASSANDRA_INTERNODE_COMPRESSION="${CASSANDRA_INTERNODE_COMPRESSION:-dc}"
+CASSANDRA_LISTEN_ADDRESS=${POD_IP}
 CASSANDRA_LOG_GC="${CASSANDRA_LOG_GC:-false}"
 CASSANDRA_LOG_GC_VERBOSE="${CASSANDRA_GC_VERBOSE:-false}"
+CASSANDRA_LOG_JSON="${CASSANDRA_LOG_JSON:-false}"
+CASSANDRA_LOG_PATH="${CASSANDRA_LOG_PATH:-/var/log/cassandra}"
+CASSANDRA_LOG_TO_FILES="${CASSANDRA_LOG_TO_FILES:-false}"
 CASSANDRA_MIGRATION_WAIT="${CASSANDRA_MIGRATION_WAIT:-1}"
 CASSANDRA_NUM_TOKENS="${CASSANDRA_NUM_TOKENS:-32}"
 CASSANDRA_RACK="${CASSANDRA_RACK}"
@@ -89,6 +100,10 @@ echo CASSANDRA_RPC_ADDRESS ${CASSANDRA_RPC_ADDRESS}
 echo CASSANDRA_RPC_INTERFACE ${CASSANDRA_RPC_INTERFACE}
 echo CASSANDRA_SEEDS ${CASSANDRA_SEEDS}
 echo CASSANDRA_SEED_PROVIDER ${CASSANDRA_SEED_PROVIDER}
+
+
+# set the storage directory
+sed -ri 's/^cassandra_storagedir.*/cassandra_storagedir="$CASSANDRA_DATA"/' "$CASSANDRA_HOME/bin/cassandra.in.sh"
 
 
 # if DC and RACK are set, use GossipingPropertyFileSnitch
@@ -144,9 +159,18 @@ for yaml in \
   var="CASSANDRA_${yaml^^}"
   val="${!var}"
   if [ "$val" ]; then
-    sed -ri 's/^(# )?('"$yaml"':).*/\2 '"$val"'/' "$CASSANDRA_CFG"
+    sed -ri 's/^(#\s*)?('"$yaml"':).*/\2 '"$val"'/' "$CASSANDRA_CFG"
   fi
 done
+
+while IFS='=' read -r name value ; do
+  if [[ $name == 'CASSANDRA_YAML_'* ]]; then
+    val="${!name}"
+    yaml=`echo "${name,,}" | cut -c 16-`
+    echo "FOUND $name $yaml $val"
+    sed -ri 's/^(#\s*)?('"$yaml"':).*/\2 '"$val"'/' "$CASSANDRA_CFG"
+  fi
+done < <(env)
 
 echo "auto_bootstrap: ${CASSANDRA_AUTO_BOOTSTRAP}" >> $CASSANDRA_CFG
 
@@ -220,4 +244,7 @@ chmod 700 "${CASSANDRA_DATA}"
 chmod 700 "${CASSANDRA_LOG_PATH}"
 chown -c -R cassandra: "${CASSANDRA_DATA}" "${CASSANDRA_CONF_DIR}" "${CASSANDRA_LOG_PATH}"
 
+cat /etc/resolv.conf
+
+cat $CASSANDRA_CFG
 su cassandra -c "$CASSANDRA_BIN -f"
