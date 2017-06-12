@@ -226,7 +226,6 @@
 #-XX:ConcGCThreads=16
 
 -javaagent:/usr/local/share/jolokia-agent.jar=host=0.0.0.0
--javaagent:/usr/local/share/prometheus-agent.jar=1234:/etc/cassandra/prometheus.yaml
 
 # Debug
 -XX:+PrintCommandLineFlags

@@ -39,8 +39,6 @@ ENV \
     DI_SHA=81231da1cd074fdc81af62789fead8641ef3f24b6b07366a1c34e5b059faf363 \
     JOLOKIA_VERSION=1.3.5 \
     JOLOKIA_SHA=90907e9d1aa8799252c08cd5ec67d805b2661ad6e773d0de9c8e3d1620b72369 \
-    PROMETHEUS_VERSION=0.8 \
-    PROMETHEUS_SHA=c32440e4a98b441b4ab66a788df77494d32e1560e0f3bb5342752bf064408520 \
     LOGENCODER_VERSION=4.10-SNAPSHOT \
     LOGENCODER_SHA=89be27bea7adc05b68c052a27b08c594a9f8e354185acbfd7a7b5f04c7cd9e20
 
@@ -57,8 +55,6 @@ RUN \
     localepurge \
     wget \
     jq \
-    && wget -q -O - "http://search.maven.org/remotecontent?filepath=io/prometheus/jmx/jmx_prometheus_javaagent/${PROMETHEUS_VERSION}/jmx_prometheus_javaagent-${PROMETHEUS_VERSION}.jar" > /usr/local/share/prometheus-agent.jar \
-    && echo "$PROMETHEUS_SHA /usr/local/share/prometheus-agent.jar" | sha256sum -c - \
     && wget -q -O - "http://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-jvm/${JOLOKIA_VERSION}/jolokia-jvm-${JOLOKIA_VERSION}-agent.jar" > /usr/local/share/jolokia-agent.jar \
     && echo "$JOLOKIA_SHA  /usr/local/share/jolokia-agent.jar" | sha256sum -c - \
     && mirror_url=$( wget -q -O - 'https://www.apache.org/dyn/closer.cgi?as_json=1' | jq --raw-output '.preferred' ) \
@@ -72,7 +68,7 @@ RUN \
     && adduser --disabled-password --no-create-home --gecos '' --disabled-login cassandra \
     && mkdir -p /var/lib/cassandra/ /var/log/cassandra/ /etc/cassandra/triggers \
     && chmod +x /sbin/dumb-init /ready-probe.sh \
-    && mv /logback-stdout.xml /logback-json-files.xml /logback-json-stdout.xml /logback-files.xml /cassandra.yaml /jvm.options /prometheus.yaml /etc/cassandra/ \
+    && mv /logback-stdout.xml /logback-json-files.xml /logback-json-stdout.xml /logback-files.xml /cassandra.yaml /jvm.options /etc/cassandra/ \
     && mv /usr/local/apache-cassandra-${CASSANDRA_VERSION}/conf/cassandra-env.sh /etc/cassandra/ \
     && chown cassandra: /ready-probe.sh \
     && if [ -n "$DEV_CONTAINER" ]; then apt-get -y --no-install-recommends install python; else rm -rf  $CASSANDRA_HOME/pylib; fi \
@@ -137,13 +133,12 @@ RUN \
 
 VOLUME ["/var/lib/cassandra"]
 
-# 1234: prometheus jmx_exporter
 # 7000: intra-node communication
 # 7001: TLS intra-node communication
 # 7199: JMX
 # 9042: CQL
 # 9160: thrift service
 # 8778: jolokia port
-EXPOSE 1234 7000 7001 7199 9042 9160 8778
+EXPOSE 7000 7001 7199 9042 9160 8778
 
 CMD ["/sbin/dumb-init", "/bin/bash", "/run.sh"]
