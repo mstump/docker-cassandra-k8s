@@ -144,7 +144,7 @@ for yaml in \
   var="CASSANDRA_${yaml^^}"
   val="${!var}"
   if [ "$val" ]; then
-    sed -ri 's/^(# )?('"$yaml"':).*/\2 '"$val"'/' "$CASSANDRA_CFG"
+    sed -ri 's/^(#\s*)?('"$yaml"':).*/\2 '"$val"'/' "$CASSANDRA_CFG"
   fi
 done
 
