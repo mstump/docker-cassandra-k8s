@@ -7,14 +7,15 @@ rules:
   labels:
     address: "$2"
 
-- pattern: org.apache.cassandra.metrics<type=(\S*)(?:, ((?!scope)\S*)=(\S*))?(?:, scope=(\S*))?, name=(\S*)><>(Count|Value)
+- pattern: org.apache.cassandra.metrics<type=(?!ColumnFamily)(\S*)(?:, ((?!scope)\S*)=((?!dse|system|solr_admin)\S*))?(?:, scope=(\S*))?, name=(\S*)><>(Count|Value)
   name: cassandra_$1_$5
   labels:
     "$1": "$4"
     "$2": "$3"
 
 # org.apache.cassandra.metrics<type=Table, keyspace=system_schema, scope=indexes, name=LiveScannedHistogram><>98thPercentile
-- pattern: org\.apache\.cassandra\.metrics<type=(\S*)(?:, ((?!scope)\S*)=(\S*))?(?:, scope=(\S*))?, name=(\S*)><>([a-zA-Z0-9]+)?
+# - pattern: org\.apache\.cassandra\.metrics<type=(\S*)(?:, ((?!scope)\S*)=((?!dse|system|solr_admin)\S*))?(?:, scope=(\S*))?, name=(\S*)><>([a-zA-Z0-9]+)?
+- pattern: org\.apache\.cassandra\.metrics<type=(?!ColumnFamily)(\S*)(?:, ((?!scope)\S*)=((?!dse|system|solr_admin)\S*))?(?:, scope=(\S*))?, name=(\S*)><>([a-zA-Z0-9]+)?
   name: cassandra_$1_$5
   labels:
     "$1": "$4"
@@ -23,7 +24,7 @@ rules:
 
 # org.apache.cassandra.db<type=Tables, keyspace=system, table=views_builds_in_progress><>UnleveledSSTables
 # org.apache.cassandra.db<type=ColumnFamilies, keyspace=system, columnfamily=batches><>DroppableTombstoneRatio
-- pattern: org\.apache\.cassandra\.db<type=(\S*), keyspace=(\S*), (columnfamily|table)=(\S*)><>([a-zA-Z0-9]+)?
+- pattern: org\.apache\.cassandra\.db<type=(\S*), keyspace=((?!dse|system|solr_admin)\S*), (columnfamily|table)=(\S*)><>([a-zA-Z0-9]+)?
   name: cassandra_$1
   labels:
     keyspace: "$2"

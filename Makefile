@@ -37,6 +37,19 @@ build-cached: docker-cached
 push: build
 	docker push ${PROJECT}/cassandra:${VERSION}
 
+run: build
+	docker run -i -t --rm \
+	-e CASSANDRA_SEEDS='172.17.0.2' \
+	-e CASSANDRA_MEMTABLE_FLUSH_WRITERS=1 \
+	${PROJECT}/cassandra:${VERSION}
+
+shell:
+	docker run -i -t --rm \
+	-e CASSANDRA_SEEDS='172.17.0.2' \
+	-e CASSANDRA_MEMTABLE_FLUSH_WRITERS=1 \
+	${PROJECT}/cassandra:${VERSION} \
+	/bin/bash
+
 push-dev: build-dev
 	docker push ${PROJECT}/cassandra:${VERSION}-dev
 
